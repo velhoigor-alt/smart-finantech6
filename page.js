@@ -8,6 +8,7 @@ import {
 
 // --- Funções Utilitárias ---
 const formatarMoeda = (valor) => {
+  if (typeof valor !== 'number') return "R$ 0,00";
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 };
 
@@ -19,6 +20,7 @@ const diffMeses = (inicio, fim) => {
 };
 
 export default function Home() {
+  const [isClient, setIsClient] = useState(false);
   const [aba, setAba] = useState("inicio");
   const [usuario, setUsuario] = useState(null);
   const [mesSelecionado, setMesSelecionado] = useState(new Date().toISOString().slice(0, 7));
@@ -41,28 +43,33 @@ export default function Home() {
   });
 
   const [editando, setEditando] = useState(null);
-
-  // Novos estados para a aba Conta
   const [senhaAtual, setSenhaAtual] = useState("");
   const [senhaNova, setSenhaNova] = useState("");
 
-  // --- Persistência ---
+  // --- Persistência e Proteção de Hidratação ---
   useEffect(() => {
+    setIsClient(true);
     const user = localStorage.getItem("usuarioLogado");
     if (user) {
       setUsuario(user);
       const salvos = localStorage.getItem(`dados_${user}`);
-      if (salvos) setDados(JSON.parse(salvos));
+      if (salvos) {
+        try {
+            setDados(JSON.parse(salvos));
+        } catch (e) {
+            console.error("Erro ao carregar dados", e);
+        }
+      }
     }
   }, []);
 
   useEffect(() => {
-    if (usuario) {
+    if (usuario && isClient) {
       localStorage.setItem(`dados_${usuario}`, JSON.stringify(dados));
     }
-  }, [dados, usuario]);
+  }, [dados, usuario, isClient]);
 
-  // --- Lógica de Recorrência e Cálculos ---
+  // --- Lógica de Cálculos ---
   const { receitasExibicao, despesasExibicao, totalReceitas, totalDespesasPagas, totalDespesasPendentes, totalParcelasMes, saldo } = useMemo(() => {
     const rMes = (dados.receitas || []).filter(r => r.mes <= mesSelecionado);
     
@@ -187,16 +194,15 @@ export default function Home() {
     }));
   };
 
+  // Se não estiver no cliente ainda, retorna vazio para evitar erro de hidratação
+  if (!isClient) return <div className="min-h-screen bg-black" />;
+
   if (!usuario) {
     return (
       <div className="min-h-screen bg-black flex justify-center items-center text-white p-4 font-sans relative overflow-hidden">
         <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-green-900/20 rounded-full blur-[100px]" />
         <div className="bg-zinc-900/80 backdrop-blur-xl p-8 rounded-3xl w-full max-w-md border border-white/5 relative z-10">
-<<<<<<< HEAD
           <h1 className="text-green-500 text-3xl font-black mb-6 text-center tracking-tighter uppercase">Smart Finantech</h1>
-=======
-          <h1 className="text-green-500 text-3xl font-black mb-6 text-center tracking-tighter uppercase">Smart Finantch</h1>
->>>>>>> 7ce136b3f2cb8891dac025a922b6890d1d8917f9
           <div className="space-y-4">
             <input placeholder="Usuário" className="w-full p-4 bg-zinc-800/50 rounded-2xl border border-white/5 outline-none focus:ring-2 ring-green-500" value={login} onChange={(e) => setLogin(e.target.value)} />
             <input type="password" placeholder="Senha" className="w-full p-4 bg-zinc-800/50 rounded-2xl border border-white/5 outline-none focus:ring-2 ring-green-500" value={senha} onChange={(e) => setSenha(e.target.value)} />
@@ -382,7 +388,7 @@ export default function Home() {
                       <Pie data={[
                           {name: 'Saldo Livre', value: saldo > 0 ? saldo : 0}, 
                           {name: 'Parcelas', value: totalParcelasMes}, 
-                          {name: 'Fixas Pagas', value: totalDespesasPagas - totalParcelasMes}
+                          {name: 'Fixas Pagas', value: (totalDespesasPagas - totalParcelasMes) > 0 ? (totalDespesasPagas - totalParcelasMes) : 0}
                         ]} dataKey="value" innerRadius={70} outerRadius={100} paddingAngle={8}>
                         <Cell fill="#22c55e" stroke="none" />
                         <Cell fill="#f97316" stroke="none" />
