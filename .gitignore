@@ -6,3 +6,6 @@ out/
 .vscode/
 .env
 .vercel/
+node_modules/
+.next/
+.vercel/
